@@ -1,0 +1,54 @@
+{
+  "timezone": {
+    "description": "时区",
+    "hint": "IANA 时区名，默认 Asia/Shanghai。用于计算每日小猪重置时间与自动刷新时间。",
+    "type": "string",
+    "default": "Asia/Shanghai"
+  },
+  "max_search_results": {
+    "description": "找猪最多返回图片数",
+    "hint": "使用「找猪 <关键词>」时最多返回的图片数量，取值范围 1-20，默认 8。",
+    "type": "int",
+    "default": 8,
+    "slider": {
+      "min": 1,
+      "max": 20,
+      "step": 1
+    }
+  },
+  "auto_refresh_enabled": {
+    "description": "每日 0 点自动刷新 PigHub 图库",
+    "hint": "开启后将在每天 00:00 自动从 PigHub 拉取最新猪猪图库并缓存到插件数据目录。",
+    "type": "bool",
+    "default": true
+  },
+  "refresh_admin_only": {
+    "description": "仅管理员可执行「刷新小猪」",
+    "hint": "默认关闭，所有用户均可触发「刷新小猪」；开启后仅 AstrBot 管理员可用。",
+    "type": "bool",
+    "default": false
+  },
+  "pighub_api_url": {
+    "description": "PigHub 图库 API 地址",
+    "hint": "默认 https://pighub.top/api/all-images，一般无需修改。",
+    "type": "string",
+    "default": "https://pighub.top/api/all-images"
+  },
+  "pighub_image_base_url": {
+    "description": "PigHub 图片基础 URL",
+    "hint": "默认 https://pighub.top/data/，用于拼接随机小猪与找猪的图片地址。",
+    "type": "string",
+    "default": "https://pighub.top/data/"
+  },
+  "request_timeout": {
+    "description": "网络请求超时时间（秒）",
+    "hint": "请求 PigHub API 的超时时间，取值范围 5-120 秒，默认 30 秒。",
+    "type": "int",
+    "default": 30,
+    "slider": {
+      "min": 5,
+      "max": 120,
+      "step": 5
+    }
+  }
+}
