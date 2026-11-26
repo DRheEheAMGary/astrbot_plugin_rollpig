@@ -12,8 +12,9 @@ from astrbot.api.message_components import Image, Plain
 from astrbot.core.utils.astrbot_path import get_astrbot_plugin_data_path
 
 try:
-    from . import core
+    from . import card_renderer, core
 except ImportError:  # pragma: no cover - 便于单元测试直接 import main
+    import card_renderer  # type: ignore[no-redef]
     import core  # type: ignore[no-redef]
 
 PLUGIN_NAME = "astrbot_plugin_rollpig"
@@ -72,6 +73,7 @@ class Main(star.Star):
                 pass
             except Exception as exc:
                 logger.warning("[rollpig] 停止自动刷新任务时出错: %s", exc)
+        await card_renderer.shutdown_card_renderer()
         logger.info("[rollpig] 插件已卸载")
 
     # ------------------------------------------------------------------
@@ -170,8 +172,22 @@ class Main(star.Star):
                 today_str=today_str,
             )
 
-        chain: list[Any] = [Plain(f"今日你是：{pig.get('name', '未知小猪')}\n")]
         img_path = core.find_image_file(str(pig.get("id", "")))
+        if self._cfg_bool("render_card", True):
+            try:
+                font_path = self._cfg_str("card_font_path", "") or None
+                rendered = await card_renderer.render_pig_card_image(
+                    pig,
+                    img_path,
+                    cache_dir=self._data_dir / "cards",
+                    font_path=font_path,
+                )
+                yield event.chain_result([Image.fromBytes(rendered.data)])
+                return
+            except Exception as exc:
+                logger.warning("[rollpig] 卡片渲染失败，已回退纯图文模式: %s", exc)
+
+        chain: list[Any] = [Plain(f"今日你是：{pig.get('name', '未知小猪')}\n")]
         if img_path is not None:
             chain.append(Image.fromFileSystem(str(img_path)))
         chain.append(

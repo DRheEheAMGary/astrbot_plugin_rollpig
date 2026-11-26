@@ -17,6 +17,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
+import card_renderer  # noqa: E402
 import core  # noqa: E402
 
 
@@ -73,6 +74,10 @@ def _install_astrbot_stubs() -> None:
         def fromURL(cls, url: str):
             return cls("url", url)
 
+        @classmethod
+        def fromBytes(cls, data: bytes):
+            return cls("bytes", str(len(data)))
+
     class _AstrMessageEvent:
         pass
 
@@ -127,6 +132,11 @@ class TestResources(unittest.TestCase):
             images = core.load_pighub_images(Path(tmp))
             self.assertGreater(len(images), 0)
 
+    def test_bundled_font_exists(self):
+        font_file = PLUGIN_ROOT / "resource" / "fonts" / "SourceHanSansSC-Medium.otf"
+        self.assertTrue(font_file.is_file())
+        self.assertGreater(font_file.stat().st_size, 100_000)
+
 
 class TestCoreLogic(unittest.TestCase):
     def test_draw_today_pig_idempotent_and_resets_next_day(self):
@@ -179,6 +189,42 @@ class TestCoreLogic(unittest.TestCase):
         secs = core.seconds_until_next_midnight("Asia/Shanghai", now=now)
         self.assertAlmostEqual(secs, 61.0, places=3)
 
+    def test_card_disk_cache_roundtrip_and_invalid(self):
+        png_result = card_renderer.PigCardRenderResult(
+            data=b"\x89PNG\r\n\x1a\nfake-png-payload",
+            image_format="png",
+            renderer="pillow",
+            analysis_font_size=28,
+            analysis_lines=2,
+        )
+        raw = card_renderer._serialize_card_disk_cache(png_result)
+        parsed = card_renderer._deserialize_card_disk_cache(raw)
+        self.assertEqual(parsed, png_result)
+
+        gif_result = card_renderer.PigCardRenderResult(
+            data=b"GIF89afake-gif-payload",
+            image_format="gif",
+            renderer="pillow-gif",
+            analysis_font_size=26,
+            analysis_lines=3,
+        )
+        parsed_gif = card_renderer._deserialize_card_disk_cache(
+            card_renderer._serialize_card_disk_cache(gif_result)
+        )
+        self.assertEqual(parsed_gif, gif_result)
+
+        with self.assertRaises(ValueError):
+            card_renderer._deserialize_card_disk_cache(b"BAD-MAGIC")
+
+    def test_gif_helpers(self):
+        self.assertEqual(card_renderer._normalize_gif_duration(0), 100)
+        self.assertEqual(card_renderer._normalize_gif_duration(5), 20)
+        self.assertEqual(card_renderer._normalize_gif_duration(5000), 2000)
+        groups = card_renderer._gif_frame_groups(120)
+        self.assertEqual(len(groups), card_renderer.GIF_TARGET_FRAMES)
+        self.assertEqual(groups[0][0], 0)
+        self.assertEqual(groups[-1][1], 120)
+
 
 class TestAsyncAndPluginCommands(unittest.IsolatedAsyncioTestCase):
     async def test_refresh_pighub_cache(self):
@@ -206,7 +252,11 @@ class TestAsyncAndPluginCommands(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = plugin_main.Main(
                 context=None,
-                config={"auto_refresh_enabled": False, "refresh_admin_only": True},
+                config={
+                    "auto_refresh_enabled": False,
+                    "refresh_admin_only": True,
+                    "render_card": False,
+                },
             )
             plugin._data_dir = Path(tmp)
             await plugin.initialize()
@@ -253,6 +303,44 @@ class TestAsyncAndPluginCommands(unittest.IsolatedAsyncioTestCase):
                         r async for r in plugin.refresh_pig_data(_FakeEvent(admin=True))
                     ]
                     self.assertEqual(res_ok[0][1], "成功从 PigHub 刷新 123 头猪猪")
+            finally:
+                await plugin.terminate()
+
+    async def test_today_pig_card_render_and_fallback(self):
+        _install_astrbot_stubs()
+        import main as plugin_main  # noqa: E402
+
+        fake_card = card_renderer.PigCardRenderResult(
+            data=b"\x89PNG\r\n\x1a\ncard",
+            image_format="png",
+            renderer="pillow",
+            analysis_font_size=28,
+            analysis_lines=2,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = plugin_main.Main(
+                context=None,
+                config={"auto_refresh_enabled": False, "render_card": True},
+            )
+            plugin._data_dir = Path(tmp)
+            await plugin.initialize()
+            try:
+                with patch(
+                    "card_renderer.render_pig_card_image",
+                    new=AsyncMock(return_value=fake_card),
+                ):
+                    res = [r async for r in plugin.send_today_pig(_FakeEvent(sender_id="77"))]
+                    self.assertEqual(res[0][0], "chain")
+                    self.assertEqual(len(res[0][1]), 1)
+                    self.assertEqual(res[0][1][0].kind, "bytes")
+
+                with patch(
+                    "card_renderer.render_pig_card_image",
+                    new=AsyncMock(side_effect=RuntimeError("Pillow unavailable")),
+                ):
+                    res_fb = [r async for r in plugin.send_today_pig(_FakeEvent(sender_id="77"))]
+                    self.assertEqual(res_fb[0][0], "chain")
+                    self.assertTrue(any(getattr(c, "kind", None) == "file" for c in res_fb[0][1]))
             finally:
                 await plugin.terminate()
 

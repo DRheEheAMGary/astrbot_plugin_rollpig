@@ -1,7 +1,7 @@
 name: astrbot_plugin_rollpig
 display_name: 今天是什么小猪
 desc: 抽取今日小猪、从 PigHub 随机获取猪猪图或按关键词找猪（移植自 huannai_plugin_rollpig / nonebot-plugin-rollpig）。
-version: 1.0.0
+version: 1.1.0
 author: DRheEheAMGary
 repo: https://github.com/DRheEheAMGary/astrbot_plugin_rollpig
 astrbot_version: ">=4.20.0"

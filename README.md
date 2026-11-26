@@ -21,7 +21,7 @@
 ## 安装方式
 
 1. 将本仓库放入 AstrBot 的 `data/plugins/astrbot_plugin_rollpig` 目录，或在 AstrBot 插件管理页面通过仓库地址安装。
-2. 确保依赖 `httpx` 已安装（AstrBot 环境通常已内置）。
+2. 确保依赖 `httpx` 和 `Pillow` 已安装（AstrBot 环境通常已内置）。
 3. 重启或重载插件即可使用。
 
 ## 配置项
@@ -29,6 +29,8 @@
 可在 AstrBot WebUI 插件配置页调整以下选项：
 
 - `timezone`：时区，默认 `Asia/Shanghai`，用于每日小猪重置与 0 点自动刷新。
+- `render_card`：是否启用「今日小猪」800×800 卡片图片渲染（默认开启；关闭或渲染失败时自动回退为纯图文消息）。
+- `card_font_path`：自定义卡片渲染字体路径（留空则优先使用插件自带的思源黑体 `SourceHanSansSC-Medium.otf`）。
 - `max_search_results`：`找猪` 最多返回图片数量（1–20，默认 8）。
 - `auto_refresh_enabled`：是否每天 0 点自动从 PigHub 刷新图库（默认开启）。
 - `refresh_admin_only`：是否仅允许管理员执行 `刷新小猪`（默认关闭）。

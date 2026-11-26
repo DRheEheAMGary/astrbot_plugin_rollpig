@@ -5,6 +5,18 @@
     "type": "string",
     "default": "Asia/Shanghai"
   },
+  "render_card": {
+    "description": "启用「今日小猪」卡片图片渲染",
+    "hint": "开启后将使用 Pillow 渲染 800×800 卡片图片发送（支持 PNG 与动态 GIF）；关闭或渲染失败时自动回退为纯图文混排消息。",
+    "type": "bool",
+    "default": true
+  },
+  "card_font_path": {
+    "description": "自定义卡片渲染字体路径（可选）",
+    "hint": "留空则优先使用插件自带的思源黑体 SourceHanSansSC-Medium.otf；填写绝对路径或相对路径可覆盖默认字体。",
+    "type": "string",
+    "default": ""
+  },
   "max_search_results": {
     "description": "找猪最多返回图片数",
     "hint": "使用「找猪 <关键词>」时最多返回的图片数量，取值范围 1-20，默认 8。",
